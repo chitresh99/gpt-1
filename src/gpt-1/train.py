@@ -5,21 +5,23 @@ import matplotlib.pyplot as plt
 import torch
 
 from data import vocab_size, get_batch, decode
-from model import AttentionLM
+from model import TransformerLM
 
 ######################
 # Config
 ######################
 
-block_size = 8
+block_size = 32       # up from 8, the model can now use longer context
 batch_size = 32
-n_embd = 32           # size of each token's vector; GPT-1 used 768
-learning_rate = 1e-3  # lower than the bigram, attention is less forgiving
+n_embd = 64           # GPT-1: 768
+n_head = 4            # GPT-1: 12, head size here = 64 / 4 = 16 (GPT-1: 64)
+n_layer = 4           # GPT-1: 12
+learning_rate = 1e-3  # if loss spikes or goes nan, drop to 5e-4 (post-LN is touchy)
 max_steps = 5000
-eval_interval = 250   # denser than before so the curve isn't a straight line
+eval_interval = 250
 eval_iters = 200
 
-bigram_val = 2.4888   # from phase 1
+baselines = {"bigram": 2.4888, "1 head": 2.4012}  # val losses from earlier phases
 
 torch.manual_seed(1337)
 
@@ -45,18 +47,20 @@ def estimate_loss(model):
 # Training
 ######################
 
-model = AttentionLM(vocab_size, n_embd, block_size)
+model = TransformerLM(vocab_size, n_embd, n_head, n_layer, block_size)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 n_params = sum(p.numel() for p in model.parameters())
 expected = math.log(vocab_size)
 
 print("=" * 50)
-print("Single-head attention model")
+print("Transformer (post-LN blocks)")
 print("=" * 50)
 print(f"parameters      {n_params:,}")
+print(f"layers x heads  {n_layer} x {n_head}, width {n_embd}")
 print(f"context         {block_size} characters")
 print(f"expected start  {expected:.4f}")
-print(f"bigram val      {bigram_val:.4f}  (to beat)")
+for name, val in baselines.items():
+    print(f"{name + ' val':<15} {val:.4f}")
 print()
 print(f"{'step':>6} | {'train':>7} | {'val':>7} | {'gap':>6} | {'time':>6}")
 print("-" * 46)
@@ -82,7 +86,7 @@ for step in range(max_steps + 1):
     optimizer.step()
 
 print("-" * 46)
-print(f"final val loss  {val_log[-1]:.4f}  (bigram: {bigram_val:.4f})")
+print(f"final val loss  {val_log[-1]:.4f}")
 
 ######################
 # Loss curve
@@ -92,16 +96,17 @@ plt.figure(figsize=(9, 5))
 plt.plot(batch_log, color="lightgray", linewidth=0.8, label="single batch (noisy)")
 plt.plot(step_log, train_log, "o-", markersize=3, label="train (averaged)")
 plt.plot(step_log, val_log, "s-", markersize=3, label="val (averaged)")
-plt.axhline(bigram_val, color="green", linestyle="--", linewidth=1, label=f"bigram val = {bigram_val:.2f}")
+for (name, val), color in zip(baselines.items(), ["green", "purple"]):
+    plt.axhline(val, color=color, linestyle="--", linewidth=1, label=f"{name} val = {val:.2f}")
 plt.axhline(expected, color="red", linestyle="--", linewidth=1, label=f"uniform guess = {expected:.2f}")
 plt.xlabel("step")
 plt.ylabel("cross-entropy loss")
-plt.title("Single-head attention loss curve")
+plt.title("Transformer loss curve")
 plt.legend()
 plt.grid(alpha=0.3)
 plt.tight_layout()
-plt.savefig("attention_loss.png", dpi=120)
-print("loss curve saved to attention_loss.png")
+plt.savefig("transformer_loss.png", dpi=120)
+print("loss curve saved to transformer_loss.png")
 
 ######################
 # Generation
