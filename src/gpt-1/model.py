@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-################################
+###############################
 # Self attention (one head)
-################################
+###############################
 
 class Head(nn.Module):
     def __init__(self, n_embd, head_size, block_size):
@@ -47,7 +47,7 @@ class MultiHeadAttention(nn.Module):
         return self.proj(out)  # lets heads' outputs mix before re-entering the residual stream
 
 ######################
-# Feed-forward
+# Feed forward
 ######################
 
 class FeedForward(nn.Module):
@@ -64,9 +64,9 @@ class FeedForward(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-##############################################
+############################################
 # Transformer block (post-LN, as in GPT-1)
-##############################################
+############################################
 
 class Block(nn.Module):
     def __init__(self, n_embd, n_head, block_size):
@@ -83,9 +83,9 @@ class Block(nn.Module):
         x = self.ln2(x + self.mlp(x))   # compute: each token processes what it gathered
         return x
 
-##########################
+##############################
 # Embeddings + one head
-##########################
+##############################
 
 class AttentionLM(nn.Module):
     def __init__(self, vocab_size, n_embd, block_size):
@@ -122,9 +122,9 @@ class AttentionLM(nn.Module):
             idx = torch.cat([idx, next_id], dim=1)
         return idx
 
-#####################################
-# Model: stacked Transformer blocks
-#####################################
+#############################
+# Stacked Transformer blocks
+#############################
 
 class TransformerLM(nn.Module):
     def __init__(self, vocab_size, n_embd, n_head, n_layer, block_size):
@@ -255,25 +255,34 @@ class GPT(nn.Module):
         if isinstance(module, nn.Linear) and module.bias is not None:
             nn.init.zeros_(module.bias)
 
-    def forward(self, idx, targets=None):
+    def hidden(self, idx):
+        # final hidden states, used by both the LM head and the fine-tuning head
         B, T = idx.shape
         assert T <= self.cfg.block_size, f"sequence of {T} is longer than block_size {self.cfg.block_size}"
         pos = torch.arange(T, device=idx.device)
         x = self.drop(self.token_emb(idx) + self.pos_emb(pos))
-        x = self.blocks(x)
-        logits = self.lm_head(x)  # (B, T, vocab_size)
+        return self.blocks(x)  # (B, T, n_embd)
 
+    def forward(self, idx, targets=None):
+        logits = self.lm_head(self.hidden(idx))  # (B, T, vocab_size)
         if targets is None:
             return logits, None
-        loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+        # ignore_index=-1 lets padded positions be skipped (needed for fine-tuning)
+        loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
         return logits, loss
 
     @torch.no_grad()
-    def generate(self, idx, max_new_tokens):
+    def generate(self, idx, max_new_tokens, temperature=1.0, top_k=None):
         for _ in range(max_new_tokens):
             idx_cond = idx[:, -self.cfg.block_size:]
             logits, _ = self(idx_cond)
-            probs = F.softmax(logits[:, -1, :], dim=-1)
+            # temperature < 1 sharpens the distribution, > 1 flattens it
+            logits = logits[:, -1, :] / temperature
+            if top_k is not None:
+                # keep only the k highest scores, everything else can't be sampled
+                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                logits[logits < v[:, [-1]]] = float("-inf")
+            probs = F.softmax(logits, dim=-1)
             next_id = torch.multinomial(probs, num_samples=1)
             idx = torch.cat([idx, next_id], dim=1)
         return idx
