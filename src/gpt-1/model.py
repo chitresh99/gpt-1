@@ -64,9 +64,9 @@ class FeedForward(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-############################################
+#############################################
 # Transformer block (post-LN, as in GPT-1)
-############################################
+#############################################
 
 class Block(nn.Module):
     def __init__(self, n_embd, n_head, block_size):
@@ -83,9 +83,9 @@ class Block(nn.Module):
         x = self.ln2(x + self.mlp(x))   # compute: each token processes what it gathered
         return x
 
-##############################
+######################
 # Embeddings + one head
-##############################
+######################
 
 class AttentionLM(nn.Module):
     def __init__(self, vocab_size, n_embd, block_size):
@@ -122,9 +122,9 @@ class AttentionLM(nn.Module):
             idx = torch.cat([idx, next_id], dim=1)
         return idx
 
-#############################
-# Stacked Transformer blocks
-#############################
+###############################
+# Stacked transformer blocks
+###############################
 
 class TransformerLM(nn.Module):
     def __init__(self, vocab_size, n_embd, n_head, n_layer, block_size):

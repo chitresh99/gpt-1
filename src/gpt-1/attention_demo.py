@@ -24,9 +24,7 @@ print(weights @ x)  # 1.0, 1.5, 2.0, 2.5
 ######################
 
 scores = torch.zeros(T, T)
-scores = scores.masked_fill(
-    tril == 0, float("-inf")
-)  # exp(-inf) = 0, so the future gets no weight
+scores = scores.masked_fill(tril == 0, float("-inf"))  # exp(-inf) = 0, so the future gets no weight
 weights = F.softmax(scores, dim=-1)
 
 print("\n2. masked softmax of all-equal scores (same as step 1)")
@@ -36,7 +34,7 @@ print(weights)
 # 3. Scores that depend on the data: one head of self-attention
 ######################
 
-C = 8  # features per position
+C = 8          # features per position
 head_size = 4
 x = torch.randn(T, C)
 
@@ -44,11 +42,11 @@ query = nn.Linear(C, head_size)
 key = nn.Linear(C, head_size)
 value = nn.Linear(C, head_size)
 
-q, k, v = query(x), key(x), value(x)  # each (T, head_size)
-scores = q @ k.T * head_size**-0.5  # (T, T), how well each query matches each key
+q, k, v = query(x), key(x), value(x)                  # each (T, head_size)
+scores = q @ k.T * head_size ** -0.5                  # (T, T), how well each query matches each key
 scores = scores.masked_fill(tril == 0, float("-inf"))
 weights = F.softmax(scores, dim=-1)
-out = weights @ v  # (T, head_size)
+out = weights @ v                                     # (T, head_size)
 
 print("\n3. learned attention weights (uneven now, the data decides)")
 print(weights.detach().round(decimals=2))

@@ -7,6 +7,7 @@ import torch
 
 from data import vocab_size, get_batch, decode
 from model import GPT, GPTConfig
+from paths import CKPT_DIR, RESULTS_DIR, save_metrics
 
 ######################
 # Config
@@ -27,13 +28,13 @@ grad_clip = 1.0       # GPT-1's released code clipped at 1.0 (not stated in the 
 
 eval_interval = 250
 eval_iters = 100
-ckpt_path = "gpt1_pretrained.pt"
+ckpt_path = CKPT_DIR / "gpt1_pretrained.pt"
 
 torch.manual_seed(1337)
 
-##########################
+######################
 # Learning rate schedule
-#########################
+######################
 
 def get_lr(step):
     # linear warmup from 0, then cosine down to 0
@@ -126,11 +127,18 @@ for step in range(max_steps + 1):
     torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
     optimizer.step()
 
+elapsed = time.time() - t0
 print("-" * 56)
 print(f"final val loss  {val_log[-1]:.4f}")
 
+save_metrics("pretrain", {
+    "params": n_params, "block_size": block_size, "steps": max_steps, "time_s": elapsed,
+    "final_train": train_log[-1], "final_val": val_log[-1],
+    "eval_steps": step_log, "train": train_log, "val": val_log,
+})
+
 torch.save({"model": model.state_dict(), "cfg": asdict(cfg)}, ckpt_path)
-print(f"checkpoint saved to {ckpt_path}")
+print("checkpoint saved to checkpoints/gpt1_pretrained.pt")
 
 ######################
 # Plots
@@ -152,8 +160,8 @@ ax2.set_ylabel("learning rate")
 ax2.grid(alpha=0.3)
 
 plt.tight_layout()
-plt.savefig("pretrain_loss.png", dpi=120)
-print("plot saved to pretrain_loss.png")
+plt.savefig(RESULTS_DIR / "pretrain_loss.png", dpi=120)
+print("plot saved to results/pretrain_loss.png")
 
 ######################
 # Quick sample

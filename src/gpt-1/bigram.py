@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from data import vocab_size, get_batch, decode
+from paths import RESULTS_DIR, save_metrics
 
 ######################
 # Config
@@ -112,8 +113,15 @@ for step in range(max_steps + 1):
     loss.backward()
     optimizer.step()
 
+elapsed = time.time() - t0
 print("-" * 46)
 print(f"final val loss  {val_log[-1]:.4f}  (baseline to beat)")
+
+save_metrics("bigram", {
+    "params": n_params, "block_size": block_size, "steps": max_steps, "time_s": elapsed,
+    "final_train": train_log[-1], "final_val": val_log[-1],
+    "eval_steps": step_log, "train": train_log, "val": val_log,
+})
 
 ######################
 # Loss curve
@@ -130,8 +138,8 @@ plt.title("Bigram loss curve")
 plt.legend()
 plt.grid(alpha=0.3)
 plt.tight_layout()
-plt.savefig("bigram_loss.png", dpi=120)
-print("loss curve saved to bigram_loss.png")
+plt.savefig(RESULTS_DIR / "bigram_loss.png", dpi=120)
+print("loss curve saved to results/bigram_loss.png")
 
 ######################
 # Generation

@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 from data import text, encode
 from model import GPT, GPTConfig
+from paths import CKPT_DIR, save_metrics
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--aux", type=float, default=0.5, help="lambda for the auxiliary LM loss (paper: 0.5)")
@@ -17,19 +18,20 @@ parser.add_argument("--epochs", type=int, default=3)
 parser.add_argument("--n_train", type=int, default=8000)
 parser.add_argument("--n_val", type=int, default=1000)
 parser.add_argument("--lr", type=float, default=2.5e-4)
+parser.add_argument("--seed", type=int, default=1337)
 args = parser.parse_args()
 
-torch.manual_seed(1337)
-random.seed(1337)
+torch.manual_seed(args.seed)
+random.seed(args.seed)
 
 batch_size = 32      # paper: 32
 weight_decay = 0.01
 grad_clip = 1.0
 max_line = 60        # characters kept per line, so a pair fits in block_size
 
-##############################################
+######################
 # Task: does line B come right after line A?
-##############################################
+######################
 
 def build_pairs(chunk, n):
     speeches = chunk.split("\n\n")
@@ -52,11 +54,11 @@ split = int(0.9 * len(text))  # same split point as pre-training
 train_pairs = build_pairs(text[:split], args.n_train)
 val_pairs = build_pairs(text[split:], args.n_val)
 
-###########################################
-# Input transformation
-###########################################
+######################
+# Input transformation (paper, Figure 1)
+######################
 
-ckpt = torch.load("gpt1_pretrained.pt", map_location="cpu")
+ckpt = torch.load(CKPT_DIR / "gpt1_pretrained.pt", map_location="cpu")
 cfg = GPTConfig(**ckpt["cfg"])
 
 # three new tokens, placed right after the 65 characters
@@ -128,9 +130,9 @@ optimizer = torch.optim.AdamW([
     {"params": no_decay, "weight_decay": 0.0},
 ], lr=args.lr)
 
-######################################################################
+######################
 # Schedule (paper: warmup over 0.2% of training, then linear decay)
-######################################################################
+######################
 
 steps_per_epoch = math.ceil(len(train_pairs) / batch_size)
 total_steps = args.epochs * steps_per_epoch
@@ -171,13 +173,14 @@ print(f"weights         {'random (no pre-training)' if args.scratch else 'pre-tr
 print(f"aux lambda      {args.aux}")
 print(f"train / val     {len(train_pairs)} / {len(val_pairs)} pairs, 50% positive")
 print(f"steps           {total_steps} ({args.epochs} epochs), warmup {warmup}")
-acc, lm = evaluate(val)
-print(f"before training val acc {acc:.3f}  (chance 0.500)")
+before_acc, _ = evaluate(val)
+print(f"before training val acc {before_acc:.3f}  (chance 0.500)")
 print()
 print(f"{'epoch':>5} | {'cls loss':>8} | {'lm loss':>7} | {'val acc':>7} | {'val lm':>6} | {'time':>6}")
 print("-" * 54)
 
 x_all, y_all, ext_all, labels_all = train
+history = []
 step = 0
 t0 = time.time()
 
@@ -210,8 +213,16 @@ for epoch in range(1, args.epochs + 1):
         step += 1
 
     acc, val_lm = evaluate(val)
+    history.append({"epoch": epoch, "cls_loss": cls_sum / n_batches, "lm_loss": lm_sum / n_batches,
+                    "val_acc": acc, "val_lm": val_lm})
     print(f"{epoch:>5} | {cls_sum / n_batches:>8.4f} | {lm_sum / n_batches:>7.4f} | "
           f"{acc:>7.3f} | {val_lm:>6.3f} | {time.time() - t0:>5.1f}s")
 
 print("-" * 54)
 print(f"final val accuracy {acc:.3f}")
+
+tag = (f"finetune_{'scratch' if args.scratch else 'pretrained'}_aux{args.aux:g}"
+       f"_ep{args.epochs}_lr{args.lr:g}_n{args.n_train}_seed{args.seed}")
+save_metrics(tag, {"args": vars(args), "before_acc": before_acc, "history": history,
+                   "final_val_acc": acc, "time_s": time.time() - t0})
+print(f"metrics saved to results/metrics/{tag}.json")

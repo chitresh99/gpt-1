@@ -4,6 +4,7 @@ import torch
 
 from data import encode, decode, stoi
 from model import GPT, GPTConfig
+from paths import CKPT_DIR
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--prompt", default="\n")
@@ -19,7 +20,7 @@ if unknown:
 
 torch.manual_seed(args.seed)
 
-ckpt = torch.load("gpt1_pretrained.pt", map_location="cpu")
+ckpt = torch.load(CKPT_DIR / "gpt1_pretrained.pt", map_location="cpu")
 model = GPT(GPTConfig(**ckpt["cfg"]))
 model.load_state_dict(ckpt["model"])
 model.eval()  # dropout off for generation
