@@ -1,0 +1,17 @@
+======================================================
+GPT-1 fine-tuning: does line B follow line A?
+======================================================
+weights         pre-trained
+aux lambda      0.0
+train / val     8000 / 1000 pairs, 50% positive
+steps           750 (3 epochs), warmup 1
+before training val acc 0.537  (chance 0.500)
+
+epoch | cls loss | lm loss | val acc | val lm |   time
+------------------------------------------------------
+    1 |   0.6954 |  2.7271 |   0.512 |  2.736 |  46.1s
+    2 |   0.6911 |  2.7563 |   0.549 |  2.527 |  91.5s
+    3 |   0.6860 |  2.5996 |   0.547 |  2.502 | 138.4s
+------------------------------------------------------
+final val accuracy 0.547
+metrics saved to results/metrics/finetune_pretrained_aux0_ep3_lr0.00025_n8000_seed1337.json

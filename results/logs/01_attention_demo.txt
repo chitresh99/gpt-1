@@ -1,0 +1,29 @@
+1. averaging weights (row t = how much position t takes from each position)
+tensor([[1.0000, 0.0000, 0.0000, 0.0000],
+        [0.5000, 0.5000, 0.0000, 0.0000],
+        [0.3333, 0.3333, 0.3333, 0.0000],
+        [0.2500, 0.2500, 0.2500, 0.2500]])
+result: running mean of the past
+tensor([[1.0000],
+        [1.5000],
+        [2.0000],
+        [2.5000]])
+
+2. masked softmax of all-equal scores (same as step 1)
+tensor([[1.0000, 0.0000, 0.0000, 0.0000],
+        [0.5000, 0.5000, 0.0000, 0.0000],
+        [0.3333, 0.3333, 0.3333, 0.0000],
+        [0.2500, 0.2500, 0.2500, 0.2500]])
+
+3. learned attention weights (uneven now, the data decides)
+tensor([[1.0000, 0.0000, 0.0000, 0.0000],
+        [0.4800, 0.5200, 0.0000, 0.0000],
+        [0.4600, 0.2600, 0.2800, 0.0000],
+        [0.2400, 0.2600, 0.1900, 0.3000]])
+output shape: (4, 4)
+
+4. variance of q.k for random unit-variance vectors, d = 64
+raw:     63.29   (grows with d)
+scaled:   0.99   (stays near 1)
+softmax of small scores: tensor([0.0900, 0.2450, 0.6650])
+softmax of same x 8:     tensor([0., 0., 1.])

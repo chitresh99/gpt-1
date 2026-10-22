@@ -1,0 +1,42 @@
+==================================================
+Bigram model
+==================================================
+parameters      4,225
+vocab size      65
+expected start  4.1744  (log of vocab size)
+
+  step |   train |     val |    gap |   time
+----------------------------------------------
+     0 |  4.7305 |  4.7241 | -0.006 |   0.4s
+   500 |  2.5760 |  2.5982 |  0.022 |   1.4s
+  1000 |  2.4885 |  2.5210 |  0.032 |   2.3s
+  1500 |  2.4820 |  2.4953 |  0.013 |   3.2s
+  2000 |  2.4641 |  2.4899 |  0.026 |   4.0s
+  2500 |  2.4706 |  2.4911 |  0.020 |   5.0s
+  3000 |  2.4660 |  2.4888 |  0.023 |   5.9s
+----------------------------------------------
+final val loss  2.4888  (baseline to beat)
+loss curve saved to results/bigram_loss.png
+
+==================================================
+Sample (300 characters)
+==================================================
+
+Whedimea surgoonghint t, seat at isenotouge prf VORUEEDUFoubsiofe msisuivellld'd,
+NCELofluf linou wient me; wowhe ute w t'sharrsou athy hanour'd.
+BREN his,
+Tr--f bewe ggesst ssqulanor tcen,
+AS:
+Foveldsut t se!
+My nd'r!
+S:
+
+ARWh
+ARY INIre, hepe l,
+FLAnd cer s t is ysop ff Y:
+INRONI:
+O: te.
+LO:
+Fice
+N
+==================================================

@@ -1,0 +1,5 @@
+1. max difference, looped vs batched heads: 0.00e+00  (should be ~1e-7 or smaller)
+2. lm_head shares token_emb weights: True
+3. std of a Linear weight after init: 0.0200  (should be ~0.02)
+4. our CPU config:        206,144
+   full GPT-1 sizes:      116,534,784
